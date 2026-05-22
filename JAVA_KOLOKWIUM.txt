@@ -1,0 +1,541 @@
+================================================================================
+=== KLASY, ENKAPSULACJA, KONSTRUKTORY, DZIEDZICZENIE, GET/SET ===
+================================================================================
+
+Deklaracja klasy z enkapsulacją:
+------------------------
+public class Person {
+    private final String name;
+    private int age;
+
+    public Person(String name, int age) { this.name = name; this.age = age; }
+    public String getName() { return name; }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+}
+
+Klasa abstrakcyjna, dziedziczenie, metody abstrakcyjne:
+------------------------
+public abstract class Country {
+    private final String name;
+    public Country(String name) { this.name = name; }
+    public String getName() { return name; }
+    public abstract int getPopulation();
+}
+
+// Klasy potomne
+public class CountryWithoutProvinces extends Country {
+    public CountryWithoutProvinces(String name) { super(name); }
+    @Override public int getPopulation() { return ...; }
+}
+
+// UWAGA: Klasa abstrakcyjna NIE może być instancjonowana!
+
+================================================================================
+=== WŁASNE WYJĄTKI I TRY-CATCH ===
+================================================================================
+
+Własny wyjątek (checked):
+-------------------------
+public class CountryNotFoundException extends Exception {
+    private final String country;
+    public CountryNotFoundException(String country) { 
+        super("Nie znaleziono kraju: " + country);
+        this.country = country;
+    }
+}
+
+Użycie:
+-------------------------
+try {
+    Country c = Country.fromCsv("Poland");
+} catch (CountryNotFoundException e) {
+    System.out.println(e.getMessage());
+}
+
+================================================================================
+=== PRACA NA PLIKACH TEKSTOWYCH (CSV, TXT), PARSOWANIE LICZB ===
+================================================================================
+
+Otwieranie/wczytywanie pliku:
+-----------------------------
+Path path = Paths.get("file.csv");
+if (!Files.isReadable(path)) throw new FileNotFoundException(path.toString());
+
+List<String> lines = Files.readAllLines(path);
+for (String line : lines) {
+    String[] parts = line.split(";");
+    int x = Integer.parseInt(parts[2]);
+    // ...operacje
+}
+
+Zapis pliku:
+-----------------------------
+try (PrintWriter out = new PrintWriter("out.txt")) {
+    out.println("naglowek1\tnaglowek2");
+    out.println("dane1\tdane2");
+}
+
+================================================================================
+=== KOLEKCJE: LISTA, MAPA, SORTOWANIE, STREAMY ===
+================================================================================
+
+Tworzenie i użycie:
+-------------------
+List<Person> persons = new ArrayList<>();
+Map<String, Integer> stats = new HashMap<>();
+
+Sortowanie listy:
+-------------------
+persons.sort(Comparator.comparing(Person::getAge).reversed());
+
+Iteracja, filtrowanie, mapowanie:
+-------------------
+List<Person> minors = persons.stream()
+    .filter(p -> p.getAge() < 18)
+    .collect(Collectors.toList());
+
+================================================================================
+=== LAMBDA/FUNKCYJNE, INTERFEJSY FUNKCYJNE, FABRYKI ===
+================================================================================
+
+Interfejs funkcyjny i przekazywanie lambdy:
+-------------------
+interface CsvFactory<T> { T fromCsv(Path p); }
+static void processProducts(CsvFactory<Product> maker, Path dir) { ... }
+// Wywołanie: processProducts(FoodProduct::fromCsv, dir);
+
+================================================================================
+=== PROGRAMOWANIE GENERYCZNE ===
+================================================================================
+
+Klasa generyczna:
+-------------------
+public class Box<T> {
+    private T value;
+    public Box(T value) { this.value = value; }
+    public T getValue() { return value; }
+}
+// Użycie: Box<Integer> box = new Box<>(15);
+
+================================================================================
+=== TESTY — JUNIT oraz W MAIN (GŁÓWNEJ) ===
+================================================================================
+
+Test JUnit 5:
+-------------------
+import org.junit.jupiter.api.*;
+class PersonTest {
+    @Test
+    void testMinor() {
+        Person p = new Person("A", 12);
+        Assertions.assertTrue(p.getAge() < 18);
+    }
+}
+Test w main:
+-------------------
+public static void main(String[] args) {
+    Person p = new Person("A", 12);
+    System.out.println(p.getAge());
+}
+
+================================================================================
+=== OBSŁUGA DAT (LocalDate, LocalTime) ===
+================================================================================
+
+import java.time.*;
+LocalDate d = LocalDate.parse("2000-01-01"); // lub .of(2000, 1, 1)
+LocalTime t = LocalTime.now();
+
+================================================================================
+=== REKORDY (JDK >=16) ===
+================================================================================
+
+public record Candidate(String name) {}
+
+================================================================================
+=== KLASY GEOMETRYCZNE, UTILS (SVG, POINT, SEGMENT, POLYGON, BOUNDING BOX) ===
+================================================================================
+
+Klasa Point z enkapsulacją, konstruktory, kopiowanie:
+-------------------
+public class Point {
+    private double x, y;
+    public Point(double x, double y) { this.x = x; this.y = y; }
+    public Point() { this(0,0); }
+    public Point(Point o) { this(o.x, o.y);}
+    public double getX() { return x; }
+    public double getY() { return y; }
+    public void setX(double v) { x = v; }
+    public void setY(double v) { y = v; }
+    public void translate(double dx, double dy) { x += dx; y += dy; }
+    public Point translated(double dx, double dy) { return new Point(x+dx, y+dy); }
+    public String toString() { return "("+x+","+y+")"; }
+    public String toSvg() { return "<circle cx=\"" + x + "\" cy=\"" + y + "\" r=\"3\" fill=\"red\" />"; }
+}
+
+Klasa Segment — prywatne pola, kopie w konstruktorze, długość:
+-------------------
+public class Segment {
+    private Point p1, p2;
+    public Segment(Point a, Point b) { this.p1=new Point(a); this.p2=new Point(b);}
+    public double length() {
+        double dx = p2.getX() - p1.getX(), dy = p2.getY() - p1.getY();
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+    public Point getP1() { return p1; }
+    public Point getP2() { return p2; }
+    // Static — najdłuższy z tablicy
+    public static Segment findLongest(Segment[] arr) {
+        return Arrays.stream(arr).max(Comparator.comparingDouble(Segment::length)).orElse(null);
+    }
+    // Odcinek prostopadły, przecinający się w środku
+    public Segment perpendicular() {
+        double mx = (p1.getX()+p2.getX())/2, my = (p1.getY()+p2.getY())/2;
+        double dx = p2.getX()-p1.getX(), dy = p2.getY()-p1.getY();
+        double nx = -dy, ny = dx, len = Math.sqrt(nx*nx+ny*ny)/2;
+        double ux = nx/Math.sqrt(nx*nx+ny*ny), uy = ny/Math.sqrt(nx*nx+ny*ny);
+        Point q1 = new Point(mx+ux*len, my+uy*len);
+        Point q2 = new Point(mx-ux*len, my-uy*len);
+        return new Segment(q1, q2);
+    }
+}
+
+Polygon — głęboka kopia, toSvg, boundingBox:
+-------------------
+public class Polygon {
+    private Point[] pts;
+    public Polygon(Point[] pts) { this.pts = Arrays.stream(pts).map(Point::new).toArray(Point[]::new);}
+    public Polygon(Polygon orig) { this(orig.pts); }
+    public String toSvg() {
+        String s = Arrays.stream(pts).map(p -> p.getX()+","+p.getY()).collect(Collectors.joining(" "));
+        return "<polygon points=\"" + s + "\" fill=\"none\" stroke=\"black\"/>";
+    }
+    // Bounding box — tablica Pointów
+    public record BoundingBox(double x, double y, double w, double h) {}
+    public BoundingBox boundingBox() {
+        double minX=Arrays.stream(pts).mapToDouble(Point::getX).min().orElse(0);
+        double maxX=Arrays.stream(pts).mapToDouble(Point::getX).max().orElse(0);
+        double minY=Arrays.stream(pts).mapToDouble(Point::getY).min().orElse(0);
+        double maxY=Arrays.stream(pts).mapToDouble(Point::getY).max().orElse(0);
+        return new BoundingBox(minX,minY,maxX-minX,maxY-minY);
+    }
+}
+
+================================================================================
+=== STYLE SVG, SHAPE: DZIEDZICZENIE, POLIMORFIZM, FABRYKI ===
+================================================================================
+
+Klasa Style (do SVG):
+-------------------
+public class Style {
+    public final String fillColor, strokeColor;
+    public final Double strokeWidth;
+    public Style(String f, String s, Double w) { this.fillColor = f; this.strokeColor = s; this.strokeWidth = w;}
+    public String toSvg() {
+        return "fill=\"" + fillColor + "\" stroke=\"" + strokeColor + "\" stroke-width=\"" + strokeWidth + "\"";
+    }
+}
+
+Polymorfizm: Shape, Polygon, Ellipse:
+-------------------
+public abstract class Shape {
+    protected Style style;
+    public Shape(Style style) { this.style = style; }
+    public abstract String toSvg();
+}
+public class Polygon extends Shape { ... }
+public class Ellipse extends Shape {
+    private Point c; private double rx, ry;
+    public Ellipse(Point cc, double rx, double ry, Style style) { super(style); this.c=new Point(cc); this.rx=rx; this.ry=ry;}
+    @Override public String toSvg() {
+        Style s = (style!=null)?style:new Style("none","black",1.0);
+        return "<ellipse cx=\""+c.getX()+"\" cy=\""+c.getY()+"\" rx=\""+rx+"\" ry=\""+ry+"\" "+s.toSvg()+" />";
+    }
+}
+
+Scene — zbiór Shape, toSvg:
+-------------------
+public class SvgScene {
+    private Shape[] shapes=new Shape[3]; private int idx=0;
+    public void addShape(Shape s) { shapes[idx++%shapes.length]=s; }
+    public String toSvg() {
+        return Arrays.stream(shapes).filter(Objects::nonNull).map(Shape::toSvg).collect(Collectors.joining("\n"));
+    }
+}
+
+================================================================================
+=== GENEALOGIA: OSOBY, RODZINA, CSV, BINARNY, SORTOWANIE, WYJĄTKI ===
+================================================================================
+
+// Klasa Person — imię, nazwisko, data urodzin, data zgonu, children, compareTo, CSV:
+import java.time.LocalDate;
+public class Person implements Comparable<Person>, Serializable {
+    private String firstName, lastName;
+    private LocalDate birth, death;
+    private Set<Person> children = new HashSet<>();
+    public Person(String f, String l, LocalDate b, LocalDate d) { firstName=f; lastName=l; birth=b; death=d; }
+    public boolean adopt(Person ch) { return children.add(ch);}
+    public Person getYoungestChild() { return children.stream().max(Comparator.naturalOrder()).orElse(null);}
+    @Override public int compareTo(Person o) { return this.birth.compareTo(o.birth); }
+    public List<Person> getChildren() { List<Person> l=new ArrayList<>(children); l.sort(Comparator.naturalOrder()); return l;}
+    public String getFirstName() {return firstName;}
+    public String getLastName() {return lastName;}
+    public LocalDate getBirth() {return birth;}
+    public LocalDate getDeath() {return death;}
+    public String toString() { return firstName+" "+lastName+" ("+birth+")";}
+
+    // CSV: static fabryczna
+    public static Person fromCsvLine(String line) throws NegativeLifespanException {
+        String[] p = line.split(",");
+        String[] names = p[0].trim().split("\\s+");
+        String fname = names[0], lname = names.length>1?names[1]:"";
+        LocalDate birth = LocalDate.parse(p[1].trim());
+        LocalDate death = (p[2].trim().isEmpty()) ? null : LocalDate.parse(p[2].trim());
+        if (death!=null && death.isBefore(birth)) throw new NegativeLifespanException(fname+" "+lname,birth,death);
+        return new Person(fname,lname,birth,death);
+    }
+    // Serializacja
+    public static void toBinaryFile(List<Person> persons, String path) throws IOException {
+        try (ObjectOutputStream o=new ObjectOutputStream(new FileOutputStream(path))) {o.writeObject(persons);}
+    }
+    public static List<Person> fromBinaryFile(String path) throws IOException,ClassNotFoundException {
+        try(ObjectInputStream i=new ObjectInputStream(new FileInputStream(path))){return (List<Person>)i.readObject();}
+    }
+}
+
+// Przykład klasy Family — mapowanie osób:
+public class Family {
+    private Map<String, List<Person>> people = new HashMap<>();
+    public void add(Person... ps) {
+        for(Person p: ps) {
+            String k = p.getFirstName()+" "+p.getLastName();
+            people.computeIfAbsent(k,k2->new ArrayList<>()).add(p);
+        }
+    }
+    public Person[] get(String key) {
+        List<Person> res = people.getOrDefault(key, new ArrayList<>());
+        res.sort(Comparator.naturalOrder());
+        return res.toArray(new Person[0]);
+    }
+}
+
+================================================================================
+=== INTEGRACJA Z PLANTUML, DIAGRAMY, FILTROWANIE, SORTOWANIE, FUNKTORY ===
+================================================================================
+
+// Runner do PlantUML:
+public class PlantUMLRunner {
+    private static String plantUmlJarPath;
+    public static void setJarPath(String path) { plantUmlJarPath = path; }
+    public static void generateDiagram(String umlText, String outDir, String fileName) throws IOException,InterruptedException {
+        File out = new File(outDir, fileName+".txt");
+        try (PrintWriter pw = new PrintWriter(out)) { pw.print(umlText); }
+        ProcessBuilder pb = new ProcessBuilder("java", "-jar", plantUmlJarPath, out.getName());
+        pb.directory(out.getParentFile()); pb.redirectErrorStream(true);
+        Process p = pb.start(); p.waitFor();
+    }
+}
+
+// PlantUML z rodzicami dla osoby i dla listy:
+public String toPlantUml() {
+    StringBuilder sb=new StringBuilder("@startuml\n");
+    sb.append("object \""+this.getFirstName()+" "+this.getLastName()+"\" as o"+hashCode()+"\n");
+    for(Person parent: Arrays.asList(parent1,parent2)){
+        if(parent!=null){
+            sb.append("object \""+parent.getFirstName()+" "+parent.getLastName()+"\" as o"+parent.hashCode()+"\n");
+            sb.append("o"+hashCode()+" -> o"+parent.hashCode()+"\n");
+        }
+    }
+    sb.append("@enduml"); return sb.toString();
+}
+// Analogicznie generacja z listy — mapowanie, relacje, patrz wcześniejsze przykłady.
+
+Filtrowanie po substringu, sortowanie, znajdowanie najstarszego, transformacja linii/Functor:
+-------------------
+public static List<Person> filterBySubstring(List<Person> osoby, String ss) {
+    return osoby.stream().filter(p->p.getFirstName().contains(ss)||p.getLastName().contains(ss)).toList();
+}
+public static List<Person> sortByBirth(List<Person> l) {
+    return l.stream().sorted(Comparator.comparing(Person::getBirth)).toList();
+}
+public static Optional<Person> getOldestAlive(List<Person> l) {
+    return l.stream().filter(p -> p.getDeath() == null).min(Comparator.comparing(Person::getBirth));
+}
+
+public String toPlantUml(Function<String, String> postProcess, Predicate<Person> cond) {
+    StringBuilder sb=new StringBuilder("@startuml\n");
+    String oline="object \""+getFirstName()+" "+getLastName()+"\" as o"+hashCode();
+    sb.append(cond.test(this)?postProcess.apply(oline):oline).append("\n");
+    for(Person par: Arrays.asList(parent1,parent2)){
+        if(par!=null){
+            String pline="object \""+par.getFirstName()+" "+par.getLastName()+"\" as o"+par.hashCode();
+            sb.append(cond.test(par)?postProcess.apply(pline):pline).append("\n");
+            sb.append("o"+hashCode()+" -> o"+par.hashCode()+"\n");
+        }
+    }
+    sb.append("@enduml");
+    return sb.toString();
+}
+================================================================================
+=== WŁASNA LISTA GENERYCZNA, DZIEDZICZENIE PO AbstractList, ITERATORY, STREAMY ===
+================================================================================
+
+public class CustomList<T> extends AbstractList<T> {
+    private static class Node<T> { T d; Node<T> n; Node(T d){this.d=d;} }
+    private Node<T> head, tail; private int len=0;
+
+    public void addLast(T v) { Node<T> n=new Node<>(v); if(tail==null) head=tail=n;
+        else{tail.n=n;tail=n;} len++; }
+    public void addFirst(T v) { Node<T> n=new Node<>(v); if(head==null)head=tail=n;
+        else{n.n=head;head=n;} len++; }
+    public T getFirst(){if(head==null)throw new NoSuchElementException(); return head.d;}
+    public T getLast(){if(tail==null)throw new NoSuchElementException(); return tail.d;}
+    public T removeFirst() { if(head==null)throw new NoSuchElementException();
+        T d=head.d; head=head.n;if(head==null)tail=null;len--;return d;}
+    public T removeLast() {
+        if(tail==null)throw new NoSuchElementException();
+        if(head==tail){T d=tail.d;head=tail=null;len--;return d;}
+        Node<T> prev=head;while(prev.n!=tail)prev=prev.n;
+        T d=tail.d; tail=prev;tail.n=null;len--;return d;}
+    @Override public boolean add(T t){addLast(t);return true;}
+    @Override public int size(){return len;}
+    @Override public T get(int idx) {
+        Node<T> cur=head;for(int i=0;i<idx;i++)cur=cur.n;
+        if(cur==null)throw new IndexOutOfBoundsException(); return cur.d;}
+    @Override public Iterator<T> iterator() {
+        return new Iterator<T>() {
+            Node<T> c=head;
+            public boolean hasNext(){return c!=null;}
+            public T next(){if(!hasNext())throw new NoSuchElementException();T d=c.d; c=c.n; return d;}
+        };
+    }
+    @Override public Spliterator<T> spliterator(){ return Spliterators.spliterator(this,0);}
+    public Stream<T> stream(){ return StreamSupport.stream(spliterator(),false);}
+}
+
+Filter po class, filter po assignable class:
+-------------------
+public static <T> List<T> filterInstances(List<T> list, Class<?> cls) {
+    return list.stream().filter(obj -> obj!=null && cls.isInstance(obj)).toList();
+}
+public static <T> List<T> filterAssignable(List<T> list, Class<?> cls) {
+    return list.stream().filter(obj -> obj!=null && cls.isAssignableFrom(obj.getClass())).toList();
+}
+
+Predicate – otwarty przedział + metoda zliczająca:
+-------------------
+public static <T extends Comparable<T>> Predicate<T> inOpenRange(T left, T right) {
+    return x -> left.compareTo(x) < 0 && x.compareTo(right) < 0;
+}
+public static <T extends Comparable<T>> long countInOpenRange(List<T> list, T l, T r) {
+    return list.stream().filter(inOpenRange(l,r)).count();
+}
+
+Comparator: kolekcje po rozmiarze/sumie:
+-------------------
+public static Comparator<Collection<?>> sizeComparator = Comparator.comparingInt(Collection::size);
+public static Comparator<Collection<? extends Number>> sumComparator =
+    (a, b) -> Double.compare(a.stream().mapToDouble(Number::doubleValue).sum(),
+                             b.stream().mapToDouble(Number::doubleValue).sum());
+
+================================================================================
+=== CSV: STATYSTYKA ZGONÓW NA CHOROBY, ICD, WALIDACJA, LISTY, TABLICE KODÓW ===
+================================================================================
+
+Klasa DeathCauseStatistic:
+-------------------
+public class DeathCauseStatistic {
+    private String icdCode;
+    private int[] deathsByAge; // zgony w grupach wiekowych
+
+    public DeathCauseStatistic(String icdCode, int[] deathsByAge) {
+        this.icdCode = icdCode;
+        this.deathsByAge = deathsByAge;
+    }
+    public static DeathCauseStatistic fromCsvLine(String line) {
+        String[] parts = line.split("\t");
+        String code = parts[0].trim();
+        if (!code.matches("[A-Z]\\d{2}.*")) throw new IllegalArgumentException("Nieprawidłowy kod ICD: "+code);
+        int[] deaths = Arrays.stream(Arrays.copyOfRange(parts,2,parts.length))
+                             .mapToInt(s -> Integer.parseInt(s.trim())).toArray();
+        return new DeathCauseStatistic(code, deaths);
+    }
+    public String getIcdCode(){return icdCode;}
+    public int[] getDeathsByAge(){return deathsByAge.clone();}
+
+    // Wejściowa: jaka grupa wiekowa, jakie zgony?
+    public static class AgeBracketDeaths {
+        public final int young, old, deathCount;
+        public AgeBracketDeaths(int y, int o, int c){young=y; old=o; deathCount=c;}
+    }
+    private static final int[] AGE_LIMITS = {0, 10, 20, 30, 40, 50, 60, 70, 80};
+    public AgeBracketDeaths getBracket(int age) {
+        for(int i=0;i<AGE_LIMITS.length-1;i++) {
+            if(age>=AGE_LIMITS[i]&&age<AGE_LIMITS[i+1]) return new AgeBracketDeaths(AGE_LIMITS[i],AGE_LIMITS[i+1]-1,deathsByAge[i]);
+        }
+        int i=deathsByAge.length-1;
+        return new AgeBracketDeaths(AGE_LIMITS[i], Integer.MAX_VALUE, deathsByAge[i]);
+    }
+}
+
+DeathCauseStatisticList — lista, wczytywanie pliku, sortowanie top n:
+-------------------
+public class DeathCauseStatisticList {
+    private List<DeathCauseStatistic> data = new ArrayList<>();
+    public void repopulate(String filepath) throws IOException {
+        data.clear();
+        try(BufferedReader br = Files.newBufferedReader(Paths.get(filepath))) {
+            String line; while((line=br.readLine())!=null) {
+                if(line.isBlank() || line.startsWith("#")) continue;
+                data.add(DeathCauseStatistic.fromCsvLine(line));
+            }
+        }
+    }
+    public List<DeathCauseStatistic> mostDeadlyDiseases(int age, int n) {
+        return data.stream().sorted(Comparator.comparingInt(dcs -> -dcs.getBracket(age).deathCount))
+                   .limit(n).toList();
+    }
+}
+
+ICDCodeTabular, dwa warianty:
+-------------------
+public interface ICDCodeTabular { String getDescription(String icdCode); }
+
+public class ICDCodeTabularOptimizedForTime implements ICDCodeTabular {
+    private final Map<String,String> map = new HashMap<>();
+    public ICDCodeTabularOptimizedForTime(String filepath) throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(filepath));
+        for(String line: lines.subList(87, lines.size())){
+            if(line.matches("[A-Z]\\d{2}.*\\s+.+")){
+                String[] spl = line.split("\\s+",2);
+                map.put(spl[0],spl[1]);
+            }
+        }
+    }
+    public String getDescription(String icdCode) {
+        String desc = map.get(icdCode);
+        if(desc==null)throw new IndexOutOfBoundsException("Brak kodu "+icdCode);
+        return desc;
+    }
+}
+
+public class ICDCodeTabularOptimizedForMemory implements ICDCodeTabular {
+    private final String filepath;
+    public ICDCodeTabularOptimizedForMemory(String filepath){this.filepath=filepath;}
+    public String getDescription(String icdCode){
+        try(Stream<String> lines = Files.lines(Paths.get(filepath))) {
+            return lines.skip(87)
+                .filter(l->l.startsWith(icdCode+" "))
+                .map(l->l.substring(icdCode.length()).trim())
+                .findFirst()
+                .orElseThrow(() -> new IndexOutOfBoundsException(icdCode));
+        }catch(IOException e){throw new UncheckedIOException(e);}
+    }
+}
+
+================================================================================
+# To wszystko obejmuje 99% typowych poleceń z kolokwium z obiektowego Java!
+# - Wzory dla: enkapsulacji, dziedziczenia, generyków, kolekcji, CSV, własnych wyjątków, streamów,
+#   modelowania obiektowego, relacji rodzinnych, polimorfizmu, testów, analiz statystycznych oraz własnych kolekcji!
+================================================================================
